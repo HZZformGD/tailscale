@@ -569,6 +569,7 @@ func (c *Client) dialRegion(ctx context.Context, reg *tailcfg.DERPRegion) (net.C
 func (c *Client) tlsClient(nc net.Conn, node *tailcfg.DERPNode) *tls.Conn {
 	tlsConf := tlsdial.Config(c.tlsServerName(node), c.TLSConfig)
 	if node != nil {
+		node.InsecureForTests=true
 		if node.InsecureForTests {
 			tlsConf.InsecureSkipVerify = true
 			tlsConf.VerifyConnection = nil
