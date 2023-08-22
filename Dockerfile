@@ -34,6 +34,10 @@
 FROM golang:1.21-alpine AS build-env
 
 WORKDIR /go/src/tailscale
+# ========= CONFIG =========
+# - download links
+ENV MODIFIED_DERPER_GIT=https://github.com/HZZformGD/tailscale.git
+ENV BRANCH=main
 
 COPY go.mod go.sum ./
 RUN go mod download
