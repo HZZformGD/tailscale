@@ -40,6 +40,3 @@ CMD bash /app/build_cert.sh $DERP_HOST $DERP_CERTS /app/san.conf && \
     --certdir=$DERP_CERTS \
     --stun=$DERP_STUN  \
     --verify-clients=$DERP_VERIFY_CLIENTS
-————————————————
-版权声明：本文为CSDN博主「pvapor」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
-原文链接：https://blog.csdn.net/weixin_67659721/article/details/130172266
