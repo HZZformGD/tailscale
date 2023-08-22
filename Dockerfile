@@ -1,79 +1,45 @@
-# Copyright (c) Tailscale Inc & AUTHORS
-# SPDX-License-Identifier: BSD-3-Clause
+FROM golang:latest AS builder
 
-############################################################################
-#
-# WARNING: Tailscale is not yet officially supported in container
-# environments, such as Docker and Kubernetes. Though it should work, we
-# don't regularly test it, and we know there are some feature limitations.
-#
-# See current bugs tagged "containers":
-#    https://github.com/tailscale/tailscale/labels/containers
-#
-############################################################################
+WORKDIR /app
 
-# This Dockerfile includes all the tailscale binaries.
-#
-# To build the Dockerfile:
-#
-#     $ docker build -t tailscale/tailscale .
-#
-# To run the tailscaled agent:
-#
-#     $ docker run -d --name=tailscaled -v /var/lib:/var/lib -v /dev/net/tun:/dev/net/tun --network=host --privileged tailscale/tailscale tailscaled
-#
-# To then log in:
-#
-#     $ docker exec tailscaled tailscale up
-#
-# To see status:
-#
-#     $ docker exec tailscaled tailscale status
-
-
-FROM golang:1.21-alpine AS build-env
-
-WORKDIR /go/src/tailscale
 # ========= CONFIG =========
 # - download links
-ENV MODIFIED_DERPER_GIT=https://github.com/HZZformGD/tailscale.git
-ENV BRANCH=main
+ENV MODIFIED_DERPER_GIT=https://github.com/HZZformGD/tailscale.git # 更改此处
+ENV BRANCH=main # 更改此处
+# ==========================
 
-COPY go.mod go.sum ./
-RUN go mod download
+# build modified derper
+RUN git clone -b $BRANCH $MODIFIED_DERPER_GIT tailscale --depth 1 && \
+    cd /app/tailscale/cmd/derper && \
+    /usr/local/go/bin/go build -ldflags "-s -w" -o /app/derper && \
+    cd /app && \
+    rm -rf /app/tailscale
 
-# Pre-build some stuff before the following COPY line invalidates the Docker cache.
-RUN go install \
-    github.com/aws/aws-sdk-go-v2/aws \
-    github.com/aws/aws-sdk-go-v2/config \
-    gvisor.dev/gvisor/pkg/tcpip/adapters/gonet \
-    gvisor.dev/gvisor/pkg/tcpip/stack \
-    golang.org/x/crypto/ssh \
-    golang.org/x/crypto/acme \
-    nhooyr.io/websocket \
-    github.com/mdlayher/netlink
+FROM ubuntu:20.04
+WORKDIR /app
 
-COPY . .
+# ========= CONFIG =========
+# - derper args
+ENV DERP_HOST=127.0.0.1
+ENV DERP_CERTS=/app/certs/
+ENV DERP_STUN true
+ENV DERP_VERIFY_CLIENTS false
+# ==========================
 
-# see build_docker.sh
-ARG VERSION_LONG=""
-ENV VERSION_LONG=$VERSION_LONG
-ARG VERSION_SHORT=""
-ENV VERSION_SHORT=$VERSION_SHORT
-ARG VERSION_GIT_HASH=""
-ENV VERSION_GIT_HASH=$VERSION_GIT_HASH
-ARG TARGETARCH
+# apt
+RUN apt-get update && \
+    apt-get install -y openssl curl
 
-RUN GOARCH=$TARGETARCH go install -ldflags="\
-      -X tailscale.com/version.longStamp=$VERSION_LONG \
-      -X tailscale.com/version.shortStamp=$VERSION_SHORT \
-      -X tailscale.com/version.gitCommitStamp=$VERSION_GIT_HASH" \
-      -v ./cmd/tailscale ./cmd/tailscaled ./cmd/containerboot
+COPY build_cert.sh /app/
+COPY --from=builder /app/derper /app/derper
 
-FROM alpine:3.16
-RUN apk add --no-cache ca-certificates iptables iproute2 ip6tables
-
-COPY --from=build-env /go/bin/* /usr/local/bin/
-# For compat with the previous run.sh, although ideally you should be
-# using build_docker.sh which sets an entrypoint for the image.
-RUN mkdir /tailscale && ln -s /usr/local/bin/containerboot /tailscale/run.sh
+# build self-signed certs && start derper
+CMD bash /app/build_cert.sh $DERP_HOST $DERP_CERTS /app/san.conf && \
+    /app/derper --hostname=$DERP_HOST \
+    --certmode=manual \
+    --certdir=$DERP_CERTS \
+    --stun=$DERP_STUN  \
+    --verify-clients=$DERP_VERIFY_CLIENTS
+————————————————
+版权声明：本文为CSDN博主「pvapor」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/weixin_67659721/article/details/130172266
