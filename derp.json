@@ -1,0 +1,20 @@
+{
+  "derpMap": {
+    "Regions": {
+      "900": {
+        "RegionID": 900,
+        "RegionCode": "myderp",
+        "Nodes": [
+          {
+            "Name": "1",
+            "RegionID": 900,
+            "HostName": "118.24.147.169",
+            "IPv4":"118.24.147.169",
+            "DERPPort": 4435,
+            "InsecureForTests": true
+          }
+        ]
+      }
+    }
+  }
+}
